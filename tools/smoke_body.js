@@ -38,7 +38,7 @@ G.state = 'title';
   mAdd('kills', 3); switchSlot(0);
   if (mGet('kills') !== 7 || !META.un.shop) fail('slot 1 lost progress');
   if (slotData(1).stats.kills !== 3) fail('slot 2 not stored');
-  const text = JSON.stringify({ game: 'dichotomy', v: 1, profile: packProfile(slotData(0)) }), back = parseProfile(text);
+  const text = JSON.stringify({ game: GAME, v: 1, profile: packProfile(slotData(0)) }), back = parseProfile(text);
   if (!back || JSON.stringify(packProfile(back)) !== JSON.stringify(packProfile(META))) fail('export does not round-trip');
   for (const junk of ['', 'null', '[]', '{"game":"dichotomy"}', '{"game":"other","profile":{}}', '"x"']) if (parseProfile(junk)) fail('junk accepted: ' + junk);
   const odd = parseProfile('{"stats":{"kills":"9","runs":2,"x":-1},"un":{"shop":1},"ship":"nope","asc":99}');
@@ -58,7 +58,25 @@ G.state = 'title';
   for (let i = 0; i < 40; i++) { frame(1 / 60); render(CTX); IN.end(); }
   IN.keys = {};
   if (!isFresh(META)) fail('hold did not wipe');
-  switchSlot(0); G.state = 'title'; META.vol = 1;
+  switchSlot(0); G.state = 'title';
+  if (!parseProfile(JSON.stringify({ game: 'dichotomy', v: 1, profile: { stats: { runs: 1 }, un: {} } }))) fail('file exported under an old name');
+  // saves made under the game's old names are taken over, from the newest name that has any,
+  // and only once
+  const keys = [CFG_KEY, ...[0, 1, 2].map(slotKey)], mine = keys.map(k => localStorage.getItem(k));
+  keys.forEach(k => localStorage.removeItem(k));
+  localStorage.setItem('geometry-bash-1', JSON.stringify({ stats: { runs: 1 }, un: {}, vol: .3 }));
+  localStorage.setItem('dichotomy-1.3', JSON.stringify({ stats: { kills: 4 }, un: {} }));
+  localStorage.setItem('dichotomy-cfg', JSON.stringify({ slot: 2, vol: .7 }));
+  loadMeta();
+  if (SLOT !== 2 || mGet('kills') !== 4 || META.vol !== .7 || !isFresh(slotData(0))) fail('adopting the newest old saves');
+  deleteSlot(2); loadMeta();
+  if (SLOT !== 2 || !isFresh(META)) fail('a wiped profile came back');
+  for (const k of ['dichotomy-1.3', 'dichotomy-cfg', CFG_KEY, slotKey(2)]) localStorage.removeItem(k);
+  loadMeta();
+  if (SLOT !== 0 || mGet('runs') !== 1 || META.vol !== .3) fail('adopting a save from before profiles');
+  localStorage.removeItem('geometry-bash-1');
+  keys.forEach((k, i) => mine[i] === null ? localStorage.removeItem(k) : localStorage.setItem(k, mine[i]));
+  loadMeta(); META.vol = 1;
   console.log('profiles ok');
 }
 
@@ -156,7 +174,7 @@ console.log('all-upgrades build ok; shots', R.shots.length, 'state', G.state, 'f
   // levels live in the profile, and only real ones survive an import
   const p = parseProfile('{"stats":{"runs":1},"un":{},"lv":{"dmg":9,"scar":2,"nope":1,"tesla":"2","hp":-1,"rate":1.9}}');
   if (JSON.stringify(p.lv) !== '{"dmg":3,"tesla":2,"rate":1}') fail('import', JSON.stringify(p.lv));
-  if (JSON.stringify(parseProfile(JSON.stringify({ game: 'dichotomy', v: 1, profile: packProfile(p) })).lv) !== JSON.stringify(p.lv)) fail('round trip');
+  if (JSON.stringify(parseProfile(JSON.stringify({ game: GAME, v: 1, profile: packProfile(p) })).lv) !== JSON.stringify(p.lv)) fail('round trip');
 
   // the antechamber: only before the last boss, only from the first ascension, and the only way in to it
   unlockAll(); G.god = true; META.ship = 'tri';
