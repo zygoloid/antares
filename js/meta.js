@@ -4,13 +4,15 @@
 // META is the profile being played (stats, un, ship, asc, and lv: the levels its upgrades have
 // been tempered to) plus the settings, which are shared by every profile.
 const META = { stats: {}, un: {}, ship: 'tri', asc: 0, lv: {}, mute: false, fx: 1, vol: 1 };
-const SAVE_KEY = 'dichotomy-1', OLD_SAVE_KEY = 'geometry-bash-1'; // the game's first name; old saves are still read
+// The game's name keys its saves. OLD_NAMES are the names it had before, newest first.
+const GAME = 'antares', OLD_NAMES = ['dichotomy', 'geometry-bash'];
 
 // ---- profiles
 // There are always NSLOTS profiles; one that has never been played is simply fresh. The first
 // lives where the only save used to, so saves from before profiles carry straight on.
-const NSLOTS = 3, CFG_KEY = 'dichotomy-cfg';
-const slotKey = i => i ? SAVE_KEY + '.' + (i + 1) : SAVE_KEY;
+const NSLOTS = 3, CFG_KEY = GAME + '-cfg';
+const saveKey = (name, i) => name + '-1' + (i ? '.' + (i + 1) : '');
+const slotKey = i => saveKey(GAME, i);
 let SLOT = 0;
 const LS = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -47,9 +49,24 @@ function saveMeta() {
   LS.set(slotKey(SLOT), JSON.stringify(packProfile(META)));
   LS.set(CFG_KEY, JSON.stringify({ slot: SLOT, mute: META.mute, fx: META.fx, vol: META.vol }));
 }
+// The first time the game runs under its current name, it takes over the saves of the newest
+// old name that has any; the old keys are left as they were. The settings are written as part
+// of that, and with every save, so once they exist this has happened for good and a profile
+// wiped later is not brought back.
+function adoptOldSaves() {
+  if (LS.get(CFG_KEY)) return;
+  for (const name of OLD_NAMES) {
+    const slots = [...Array(NSLOTS).keys()].filter(i => LS.get(saveKey(name, i)));
+    if (!slots.length) continue;
+    for (const i of slots) LS.set(slotKey(i), LS.get(saveKey(name, i)));
+    const cfg = LS.json(name + '-cfg') || LS.json(saveKey(name, 0)) || {}; // the settings used to live in the one save
+    LS.set(CFG_KEY, JSON.stringify({ slot: cfg.slot, mute: cfg.mute, fx: cfg.fx, vol: cfg.vol }));
+    return;
+  }
+}
 function loadMeta() {
-  if (!LS.get(SAVE_KEY) && LS.get(OLD_SAVE_KEY)) LS.set(SAVE_KEY, LS.get(OLD_SAVE_KEY));
-  const cfg = LS.json(CFG_KEY) || LS.json(SAVE_KEY) || {}; // the settings used to live in the one save
+  adoptOldSaves();
+  const cfg = LS.json(CFG_KEY) || {};
   META.mute = !!cfg.mute;
   if (typeof cfg.fx === 'number') META.fx = clamp(cfg.fx, 0, 1);
   if (typeof cfg.vol === 'number') META.vol = clamp(cfg.vol, 0, 1);
@@ -66,25 +83,24 @@ function switchSlot(i) {
 // Wipes a profile for good. Its slot is left fresh.
 function deleteSlot(i) {
   LS.del(slotKey(i));
-  if (!i) LS.del(OLD_SAVE_KEY); // or the old save would be picked up again
   if (i === SLOT) useProfile(freshProfile());
 }
 
 // A profile leaves as a small JSON file and comes back the same way.
 function exportProfile(i) {
   if (typeof Blob === 'undefined' || typeof URL === 'undefined') return false;
-  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify({ game: 'dichotomy', v: 1, profile: packProfile(slotData(i)) })], { type: 'application/json' }));
-  a.href = url; a.download = 'dichotomy-profile-' + (i + 1) + '.json';
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([JSON.stringify({ game: GAME, v: 1, profile: packProfile(slotData(i)) })], { type: 'application/json' }));
+  a.href = url; a.download = GAME + '-profile-' + (i + 1) + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   return true;
 }
-// Read a profile out of the text of a file; null if it is not one. A bare save from before
-// profiles is accepted too.
+// Read a profile out of the text of a file; null if it is not one. Files exported under an old
+// name, and bare saves from before profiles, are accepted too.
 function parseProfile(text) {
   try {
     const d = JSON.parse(text);
-    return cleanProfile(d && d.game === 'dichotomy' ? d.profile : d && d.stats && d.un ? d : null);
+    return cleanProfile(d && (d.game === GAME || OLD_NAMES.includes(d.game)) ? d.profile : d && d.stats && d.un ? d : null);
   } catch (e) { return null; }
 }
 // Asks for a file and loads it into slot i, but only if that slot is still fresh when the file

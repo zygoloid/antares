@@ -800,8 +800,8 @@ function drawLogo(c, y, px) {
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '900 ' + px + 'px "Segoe UI",system-ui,sans-serif';
   const off = Math.sin(G.t * 2) * px / 23;
   // the name is drawn like the polarity disc: one half solid, the other half hollow
-  c.lineWidth = px / 30; c.strokeStyle = STAGES[0].pc[1]; c.strokeText('DICHOTOMY', W / 2 - off, y); c.strokeStyle = STAGES[0].pc[0]; c.strokeText('DICHOTOMY', W / 2 + off, y);
-  c.save(); c.beginPath(); c.rect(0, 0, W / 2, H); c.clip(); c.fillStyle = '#fff'; c.fillText('DICHOTOMY', W / 2, y); c.restore();
+  c.lineWidth = px / 30; c.strokeStyle = STAGES[0].pc[1]; c.strokeText('ANTARES', W / 2 - off, y); c.strokeStyle = STAGES[0].pc[0]; c.strokeText('ANTARES', W / 2 + off, y);
+  c.save(); c.beginPath(); c.rect(0, 0, W / 2, H); c.clip(); c.fillStyle = '#fff'; c.fillText('ANTARES', W / 2, y); c.restore();
 }
 
 // A profile's emblem says how far it has got, in the game's own shapes:
