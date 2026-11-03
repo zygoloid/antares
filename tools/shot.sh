@@ -2,5 +2,7 @@
 # usage: SHOT_DIR=<windows dir> tools/shot.sh <name> <hash>   -> <name>.png of index.html#<hash>
 # Hash flags (see js/main.js): demo, title, gallery, profiles (with selN), attract, sampleN (made-up profiles, N = 0-3), stageN (depth), themeN, upsN, with=id,id, ascN (ascension), lvN (every upgrade tempered to N), sacN (stake N upgrades; with stage5 room=ante), won (the win screen), slain (the boss in the room is killed), unlockall, boss, treasure, room=TYPE, gates, current, layout=NAME, holes, athole, wraps, atwall, crack, onped, still, pause, -tSECONDS
 CH="/c/Program Files/Google/Chrome/Application/chrome.exe"
+# the game is the index.html one directory up; under Git Bash, pwd -W gives that path in Windows form
+ROOT=$(cd "$(dirname "$0")/.." && { pwd -W 2>/dev/null || pwd; })
 "$CH" --headless=new --enable-unsafe-swiftshader --window-size=1280,720 --hide-scrollbars --virtual-time-budget=2500 \
-  --user-data-dir="${SHOT_DIR}/prof-$1" --screenshot="${SHOT_DIR}/$1.png" "file:///C:/Users/richa/geometry-bash/index.html#$2" >/dev/null 2>&1
+  --user-data-dir="${SHOT_DIR}/prof-$1" --screenshot="${SHOT_DIR}/$1.png" "file:///${ROOT#/}/index.html#$2" >/dev/null 2>&1
